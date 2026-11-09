@@ -1,7 +1,6 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -13,11 +12,13 @@ public class TcpServer {
 
             while (true) {
                 try (Socket client = server.accept();
-                     BufferedReader input = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
-                     PrintWriter output = new PrintWriter(client.getOutputStream(), true, StandardCharsets.UTF_8)) {
-                    String message = input.readLine();
-                    System.out.println("Recebido: " + message);
-                    output.println(message);
+                     BufferedReader input = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8))) {
+                    System.out.println("Conectado: " + client.getRemoteSocketAddress());
+                    String message;
+                    while ((message = input.readLine()) != null) {
+                        System.out.println("Recebido: " + message);
+                    }
+                    System.out.println("Conexão encerrada: " + client.getRemoteSocketAddress());
                 }
             }
         }

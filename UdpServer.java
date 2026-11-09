@@ -10,14 +10,11 @@ public class UdpServer {
 
             while (true) {
                 byte[] buffer = new byte[1024];
-                DatagramPacket request = new DatagramPacket(buffer, buffer.length);
-                socket.receive(request);
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
 
-                String message = new String(request.getData(), request.getOffset(), request.getLength(), StandardCharsets.UTF_8);
-                System.out.println("Recebido: " + message);
-
-                DatagramPacket response = new DatagramPacket(request.getData(), request.getLength(), request.getAddress(), request.getPort());
-                socket.send(response);
+                String message = new String(packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8);
+                System.out.println("Recebido de " + packet.getSocketAddress() + ": " + message);
             }
         }
     }
