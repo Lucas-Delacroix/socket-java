@@ -14,7 +14,7 @@ public class UdpServer {
                 socket.receive(packet);
 
                 String message = new String(packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8);
-                System.out.println("Recebido de " + packet.getSocketAddress() + ": " + message);
+                System.out.println("Recebido de " + packet.getSocketAddress() + " (" + packet.getLength() + " bytes): " + message);
             }
         }
     }

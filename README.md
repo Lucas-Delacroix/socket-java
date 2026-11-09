@@ -1,6 +1,6 @@
 # Sockets TCP e UDP em Java
 
-Dois exemplos de envio de 1.000 mensagens numeradas. No TCP, o cliente envia linhas pela mesma conexão. No UDP, envia um datagrama por mensagem. Os servidores exibem o que recebem, sem enviar respostas.
+Dois exemplos de sockets com dois testes: enviar 1.000 mensagens numeradas ou uma mensagem de 1.500 bytes. No TCP, o cliente envia linhas pela mesma conexão. No UDP, envia um datagrama por mensagem. Os servidores exibem o conteúdo e o tamanho recebido, sem enviar respostas.
 
 ## 1. Preparar
 
@@ -38,10 +38,10 @@ O servidor mostra o endereço e a porta de origem do cliente, recebe as linhas e
 
 ```text
 Conectado: /192.168.1.20:49152
-Recebido: Mensagem 1
-Recebido: Mensagem 2
+Recebido (10 caracteres): Mensagem 1
+Recebido (10 caracteres): Mensagem 2
 ...
-Recebido: Mensagem 1000
+Recebido (13 caracteres): Mensagem 1000
 Conexão encerrada: /192.168.1.20:49152
 ```
 
@@ -76,8 +76,8 @@ java UdpClient 192.168.1.10
 O servidor mostra cada mensagem junto do endereço e da porta de origem:
 
 ```text
-Recebido de /192.168.1.20:49153: Mensagem 1
-Recebido de /192.168.1.20:49153: Mensagem 2
+Recebido de /192.168.1.20:49153 (10 bytes): Mensagem 1
+Recebido de /192.168.1.20:49153 (10 bytes): Mensagem 2
 ...
 ```
 
@@ -90,13 +90,55 @@ Pontos para explicar no código:
 - Cada `DatagramPacket` contém os bytes da mensagem e, no envio, o IP e a porta de destino.
 - `send()` envia um datagrama; `receive()` espera um datagrama e informa seu remetente.
 - UDP preserva os limites dos datagramas. `getLength()` indica quantos bytes foram recebidos, evitando ler a parte não utilizada do buffer.
-- O buffer tem 1024 bytes, suficientes para as mensagens deste exemplo. Datagramas maiores que o buffer seriam truncados na recepção.
+- O buffer tem 1024 bytes, suficientes para as mensagens numeradas. Datagramas maiores que o buffer são truncados na recepção.
 - UDP não garante entrega, ordem ou ausência de duplicação. O número na mensagem permite observar esses efeitos, sem corrigi-los.
 - O servidor continua esperando datagramas: não há conexão cujo fechamento sinalize o fim das 1.000 mensagens.
 
-Encerre os servidores com `Ctrl+C`.
+## 4. Demonstrar uma mensagem maior que o buffer UDP
 
-## 4. Comparar
+Mantenha os servidores ativos e execute os clientes com o segundo argumento `grande`:
+
+```sh
+java TcpClient 192.168.1.10 grande
+java UdpClient 192.168.1.10 grande
+```
+
+Na mesma máquina:
+
+```sh
+java TcpClient localhost grande
+java UdpClient localhost grande
+```
+
+Cada cliente envia uma única mensagem criada com `"A".repeat(1500)`. Cada `A` ocupa um byte em UTF-8, portanto a mensagem tem 1.500 caracteres e 1.500 bytes. O TCP acrescenta a quebra de linha, que `readLine()` remove na leitura.
+
+Observe os tamanhos informados nos servidores:
+
+| TCP | UDP |
+|---|---|
+| Recebe 1.500 caracteres | Recebe 1.024 bytes, se o datagrama chegar |
+| `readLine()` monta a linha lendo o fluxo até a quebra de linha | `receive()` copia apenas o que cabe no buffer de 1.024 bytes |
+| A linha pode chegar por várias leituras internas | Os 476 bytes restantes do datagrama são descartados |
+
+Pontos para explicar:
+
+- A próxima chamada a `receive()` espera outro datagrama; ela não recupera os 476 bytes descartados.
+- Esse truncamento é causado pelo tamanho do buffer da aplicação. UDP não tem um limite de 1.024 bytes.
+- No TCP, receber a linha completa não significa que ela viajou em um único pacote.
+- O TCP exibe `message.length()` e o UDP exibe `packet.getLength()`. Neste teste com `A`, caracteres e bytes têm o mesmo tamanho; textos com acentos podem ocupar mais bytes em UTF-8.
+
+Para mostrar a correção, altere apenas `new byte[1024]` para `new byte[2048]` em `UdpServer.java`. Encerre o servidor UDP com `Ctrl+C`, compile e inicie novamente:
+
+```sh
+javac -encoding UTF-8 UdpServer.java
+java UdpServer
+```
+
+Execute `java UdpClient 192.168.1.10 grande` novamente. Se o datagrama chegar, o servidor agora exibirá 1.500 bytes. Depois da demonstração, restaure o buffer para 1.024 bytes e recompile para repetir o teste original.
+
+Encerre os servidores com `Ctrl+C`. Sem o argumento `grande`, os clientes continuam enviando as 1.000 mensagens numeradas.
+
+## 5. Comparar
 
 | Característica | TCP | UDP |
 |---|---|---|
@@ -108,4 +150,4 @@ Encerre os servidores com `Ctrl+C`.
 
 Os dois servidores usam o número 5000, mas TCP e UDP têm espaços de portas separados e podem executar juntos. A porta de origem dos clientes é escolhida pelo sistema. Estes servidores processam os recebimentos sequencialmente, sem threads adicionais.
 
-A mensagem final do cliente indica que ele concluiu o envio local; não confirma que o servidor processou as 1.000 mensagens. Receber todos os datagramas em uma execução não transforma UDP em um protocolo confiável. Este exemplo também não mede qual protocolo é mais rápido: a rede, os buffers e as impressões no terminal influenciam o resultado.
+A mensagem final do cliente indica que ele concluiu o envio local; não confirma que o servidor processou as mensagens. Receber todos os datagramas em uma execução não transforma UDP em um protocolo confiável. Este exemplo também não mede qual protocolo é mais rápido: a rede, os buffers e as impressões no terminal influenciam o resultado.

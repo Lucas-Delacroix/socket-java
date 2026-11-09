@@ -16,7 +16,7 @@ public class TcpServer {
                     System.out.println("Conectado: " + client.getRemoteSocketAddress());
                     String message;
                     while ((message = input.readLine()) != null) {
-                        System.out.println("Recebido: " + message);
+                        System.out.println("Recebido (" + message.length() + " caracteres): " + message);
                     }
                     System.out.println("Conexão encerrada: " + client.getRemoteSocketAddress());
                 }
